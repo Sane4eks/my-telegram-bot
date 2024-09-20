@@ -1,5 +1,5 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, CallbackContext
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, filters
 import logging
 import asyncio
 import os
@@ -16,25 +16,29 @@ logger = logging.getLogger(__name__)
 # Получение токена из переменных окружения
 TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
+# Словарь для хранения активных таймеров пользователей
+active_timers = {}
+
 # Соответствие названий кнопок и таймеров
 TIMER_OPTIONS = {
-    'MOONBIX': ("🔸 MOONBIX - 5 мин", "https://t.me/Binance_Moonbix_bot/start?startApp=ref_657755660&startapp=ref_657755660&utm_medium=web_share_copy"),
-    'Not Pixel': ("👾 Not Pixel - 1 ч", "https://t.me/notpixel/app?startapp=f657755660"),
-    'HRUM': ("🥠 HRUM - 12 ч", "https://t.me/hrummebot/game?startapp=ref657755660"),
-    'Bums': ("🤩 Bums - 3 ч", "https://t.me/bums/app?startapp=ref_jV6eAxBB"),
-    'Horizon Launch': ("🚀 Horizon Launch - 1 ч", "https://t.me/HorizonLaunch_bot/HorizonLaunch?startapp=657755660"),
-    'Volts': ("⚡️ Volts - 1 ч", "https://t.me/VoltStorageBot/volts?startapp=z55lp3b8rud22s1z7935kk"),
-    'Blum': ("♠️ Blum - 8 ч", "http://t.me/BlumCryptoBot/app?startapp=ref_7L2ahDVgyG"),
-    'X Empire': ("📈 X Empire - 3 ч", "https://t.me/empirebot/game?startapp=hero657755660")
+    'MOONBIX': ("🔸 MOONBIX - 5 мин", "https://t.me/Binance_Moonbix_bot/start?startApp=ref_657755660&startapp=ref_657755660&utm_medium=web_share_copy", 5 * 60),
+    'Not Pixel': ("👾 Not Pixel - 1 ч", "https://t.me/notpixel/app?startapp=f657755660", 60 * 60),
+    'HRUM': ("🥠 HRUM - 12 ч", "https://t.me/hrummebot/game?startapp=ref657755660", 12 * 60 * 60),
+    'Bums': ("🤩 Bums - 3 ч", "https://t.me/bums/app?startapp=ref_jV6eAxBB", 3 * 60 * 60),
+    'Horizon Launch': ("🚀 Horizon Launch - 1 ч", "https://t.me/HorizonLaunch_bot/HorizonLaunch?startapp=657755660", 60 * 60),
+    'Volts': ("⚡️ Volts - 1 ч", "https://t.me/VoltStorageBot/volts?startapp=z55lp3b8rud22s1z7935kk", 60 * 60),
+    'Blum': ("♠️ Blum - 8 ч", "http://t.me/BlumCryptoBot/app?startapp=ref_7L2ahDVgyG", 8 * 60 * 60),
+    'X Empire': ("📈 X Empire - 3 ч", "https://t.me/empirebot/game?startapp=hero657755660", 3 * 60 * 60)
 }
 
-active_timers = {}  # Словарь для хранения активных таймеров
-
 # Функция для запуска таймера
-async def start_timer(duration: int, bot, chat_id, option_text):
+async def start_timer(duration: int, user_id: int, option_text: str):
     await asyncio.sleep(duration)
-    await bot.send_message(chat_id=chat_id, text=f"Таймер {option_text} истёк!")
-    active_timers.pop(chat_id, None)  # Удаляем таймер после завершения
+    chat_id = user_id  # Используем user_id как chat_id для простоты
+    await context.bot.send_message(chat_id=chat_id, text=f"Таймер {option_text} истёк!")
+    # Удаляем таймер из активных при истечении времени
+    if user_id in active_timers:
+        del active_timers[user_id]
 
 # Команда /start
 async def start(update: Update, context: CallbackContext):
@@ -44,6 +48,23 @@ async def start(update: Update, context: CallbackContext):
     # Сохраняем пользователя в базе данных
     insert_user(user_id, username)
 
+    keyboard = [
+        ['START', 'Актуальные таймеры']
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text('Выберите:', reply_markup=reply_markup)
+
+# Обработка текстовых сообщений
+async def text_message_handler(update: Update, context: CallbackContext):
+    user_id = update.message.from_user.id
+    text = update.message.text
+
+    if text == "START":
+        await show_timer_options(update, context)
+    elif text == "Актуальные таймеры":
+        await show_active_timers(update, context)
+
+async def show_timer_options(update: Update, context: CallbackContext):
     keyboard = [
         [InlineKeyboardButton("🔸 MOONBIX (5 мин)", callback_data='MOONBIX')],
         [InlineKeyboardButton("👾 Not Pixel (1 час)", callback_data='Not Pixel')],
@@ -57,49 +78,32 @@ async def start(update: Update, context: CallbackContext):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text('Выберите таймер:', reply_markup=reply_markup)
 
+async def show_active_timers(update: Update, context: CallbackContext):
+    user_id = update.message.from_user.id
+    if user_id in active_timers:
+        remaining_timers = [f"{name}: {time // 60} мин" for name, time in active_timers[user_id].items()]
+        await update.message.reply_text("Ваши активные таймеры:\n" + "\n".join(remaining_timers))
+    else:
+        await update.message.reply_text("У вас нет активных таймеров.")
+
 # Обработка нажатий на кнопки
 async def button(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()
     option = query.data
-    text, link = TIMER_OPTIONS.get(option, ("", ""))
-    duration = 0
-
-    # Установка времени таймера
-    if option == 'MOONBIX':
-        duration = 5 * 60
-    elif option == 'Not Pixel':
-        duration = 60 * 60
-    elif option == 'HRUM':
-        duration = 12 * 60 * 60
-    elif option == 'Bums':
-        duration = 3 * 60 * 60
-    elif option == 'Horizon Launch':
-        duration = 60 * 60
-    elif option == 'Volts':
-        duration = 60 * 60
-    elif option == 'Blum':
-        duration = 8 * 60 * 60
-    elif option == 'X Empire':
-        duration = 3 * 60 * 60
+    text, link, duration = TIMER_OPTIONS[option]
 
     chat_id = query.message.chat_id
-    active_timers[chat_id] = text  # Сохраняем активный таймер
 
-    # Создание задачи для асинхронного запуска таймера
-    asyncio.create_task(start_timer(duration, context.bot, chat_id, text))
+    # Запуск таймера
+    if chat_id not in active_timers:
+        active_timers[chat_id] = {}
+    active_timers[chat_id][text] = duration  # Сохраняем таймер
+    asyncio.create_task(start_timer(duration, chat_id, text))
 
     await query.edit_message_text(
         text=f"Таймер для {text} запущен! Ссылка на игру: {link}"
     )
-
-# Команда для показа активных таймеров
-async def show_active_timers(update: Update, context: CallbackContext):
-    chat_id = update.message.chat_id
-    if chat_id in active_timers:
-        await update.message.reply_text(f"Активный таймер: {active_timers[chat_id]}")
-    else:
-        await update.message.reply_text("Нет активных таймеров.")
 
 # Команда для отправки сообщения всем пользователям
 async def broadcast(update: Update, context: CallbackContext):
@@ -127,10 +131,12 @@ def main():
 
     # Команды и обработчики
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("active_timers", show_active_timers))  # Команда для показа активных таймеров
     application.add_handler(CommandHandler("broadcast", broadcast))  # Команда для рассылки
     application.add_handler(CallbackQueryHandler(button))
     application.add_error_handler(error_handler)
+
+    # Обработка текстовых сообщений
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_message_handler))
 
     # Запуск бота
     application.run_polling()
