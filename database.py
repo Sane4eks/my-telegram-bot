@@ -8,7 +8,7 @@ def connect():
         print(f"Error connecting to database: {e}")
         return None
 
-# Функция для создания таблицы пользователей, если она не существует
+# Функция для создания таблицы, если она не существует
 def create_table():
     with connect() as conn:
         if conn:
@@ -16,13 +16,14 @@ def create_table():
                 cursor = conn.cursor()
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS users (
-                        user_id INTEGER PRIMARY KEY,
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER,
                         username TEXT
                     )
                 ''')
                 conn.commit()
             except sqlite3.Error as e:
-                print(f"Error creating users table: {e}")
+                print(f"Error creating table: {e}")
 
 # Функция для создания таблицы таймеров, если она не существует
 def create_timer_table():
@@ -51,13 +52,16 @@ def insert_user(user_id: int, username: str):
                 cursor = conn.cursor()
                 cursor.execute('SELECT COUNT(*) FROM users WHERE user_id = ?', (user_id,))
                 if cursor.fetchone()[0] == 0:
-                    cursor.execute('''
-                        INSERT INTO users (user_id, username)
-                        VALUES (?, ?)
+                    cursor.execute(''' 
+                        INSERT INTO users (user_id, username) 
+                        VALUES (?, ?) 
                     ''', (user_id, username))
                     conn.commit()
             except sqlite3.Error as e:
                 print(f"Error inserting user: {e}")
+
+
+
 
 # Функция для получения всех пользователей
 def get_all_users():
@@ -66,10 +70,11 @@ def get_all_users():
             try:
                 cursor = conn.cursor()
                 cursor.execute('SELECT * FROM users')
-                return cursor.fetchall()
+                return cursor.fetchall()  # Вернёт все строки, включая ID, user_id и username
             except sqlite3.Error as e:
                 print(f"Error fetching users: {e}")
                 return []
+
 
 # Вызов функции для создания таблиц
 create_table()

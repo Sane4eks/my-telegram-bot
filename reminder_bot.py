@@ -35,7 +35,7 @@ TIMER_OPTIONS = {
 }
 
 # Функция для запуска таймера
-async def start_timer(duration: int, user_id: int, option_text: str):
+async def start_timer(duration: int, user_id: int, option_text: str, context: CallbackContext):
     start_time = time.time()
     active_timers.setdefault(user_id, {})[option_text] = (duration, start_time)
 
@@ -59,15 +59,21 @@ def load_timers():
 # Команда /start
 async def start(update: Update, context: CallbackContext):
     user_id = update.message.from_user.id
-    username = update.message.from_user.username
-    insert_user(user_id, username)
+    username = update.message.from_user.username or "Unknown"  # Убедитесь, что это имя пользователя
+    insert_user(user_id, username)  # Передаем правильные значения
 
     keyboard = [['START', 'Актуальные таймеры']]
     if user_id == 657755660:
         keyboard.append(['Пользователи'])
 
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text('Выберите:', reply_markup=reply_markup)
+    await update.message.reply_text("Выберите опцию:", reply_markup=reply_markup)
+
+# Показ пользователей
+async def show_users(update: Update, context: CallbackContext):
+    users = get_all_users()
+    user_list = "\n".join([f"ID: {user[0]}, User ID: {user[1]}, Username: {user[2]}" for user in users])
+    await update.message.reply_text(f"Пользователи:\n{user_list}")
 
 # Обработка текстовых сообщений
 async def text_message_handler(update: Update, context: CallbackContext):
@@ -134,24 +140,16 @@ async def button(update: Update, context: CallbackContext):
     if chat_id not in active_timers:
         active_timers[chat_id] = {}
     active_timers[chat_id][text] = (duration, time.time())
-    asyncio.create_task(start_timer(duration, chat_id, text))
+    asyncio.create_task(start_timer(duration, chat_id, text, context))
 
     # Сохранение таймера в базе данных
     with sqlite3.connect('bot_users.db') as conn:
         cursor = conn.cursor()
-        cursor.execute('''
-            INSERT OR REPLACE INTO timers (user_id, timer_name, duration, start_time)
-            VALUES (?, ?, ?, ?)
-        ''', (chat_id, text, duration, time.time()))
+        cursor.execute('''INSERT OR REPLACE INTO timers (user_id, timer_name, duration, start_time)
+                          VALUES (?, ?, ?, ?)''', (chat_id, text, duration, time.time()))
         conn.commit()
 
     await query.edit_message_text(text=f"Таймер для {text} запущен! Ссылка на игру: {link}")
-
-# Показ пользователей
-async def show_users(update: Update, context: CallbackContext):
-    users = get_all_users()
-    user_list = "\n".join([f"ID: {user[0]}, Username: {user[1]}" for user in users])
-    await update.message.reply_text(f"Пользователи:\n{user_list}")
 
 # Обработчик ошибок
 async def error_handler(update: Update, context: CallbackContext):
