@@ -5,7 +5,8 @@ import asyncio
 import os
 import time
 from dotenv import load_dotenv
-from database import insert_user, get_all_users, create_table
+from database import insert_user, get_all_users, create_table, create_timer_table
+import sqlite3
 
 # Загрузка переменных окружения из файла .env
 load_dotenv()
@@ -46,6 +47,14 @@ async def start_timer(duration: int, user_id: int, option_text: str):
         del active_timers[user_id][option_text]
         if not active_timers[user_id]:
             del active_timers[user_id]
+
+# Функция для загрузки активных таймеров из базы данных
+def load_timers():
+    with sqlite3.connect('bot_users.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT user_id, timer_name, duration, start_time FROM timers')
+        for user_id, timer_name, duration, start_time in cursor.fetchall():
+            active_timers.setdefault(user_id, {})[timer_name] = (duration, start_time)
 
 # Команда /start
 async def start(update: Update, context: CallbackContext):
@@ -127,12 +136,21 @@ async def button(update: Update, context: CallbackContext):
     active_timers[chat_id][text] = (duration, time.time())
     asyncio.create_task(start_timer(duration, chat_id, text))
 
+    # Сохранение таймера в базе данных
+    with sqlite3.connect('bot_users.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT OR REPLACE INTO timers (user_id, timer_name, duration, start_time)
+            VALUES (?, ?, ?, ?)
+        ''', (chat_id, text, duration, time.time()))
+        conn.commit()
+
     await query.edit_message_text(text=f"Таймер для {text} запущен! Ссылка на игру: {link}")
 
 # Показ пользователей
 async def show_users(update: Update, context: CallbackContext):
     users = get_all_users()
-    user_list = "\n".join([f"ID: {user[1]}, Username: {user[2]}" for user in users])
+    user_list = "\n".join([f"ID: {user[0]}, Username: {user[1]}" for user in users])
     await update.message.reply_text(f"Пользователи:\n{user_list}")
 
 # Обработчик ошибок
@@ -142,6 +160,8 @@ async def error_handler(update: Update, context: CallbackContext):
 # Основная функция для запуска бота
 def main():
     create_table()  # Создание таблицы пользователей
+    create_timer_table()  # Создание таблицы таймеров
+    load_timers()  # Загрузка таймеров из базы данных
     application = Application.builder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
