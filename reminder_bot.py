@@ -34,19 +34,26 @@ TIMER_OPTIONS = {
     'Hamster Kombat': ("🐹 Hamster Kombat (3 часа)", "https://t.me/hamster_kOmbat_bot/start?startapp=kentId657755660", 3 * 60 * 60),
 }
 
+
 # Функция для запуска таймера
 async def start_timer(duration: int, user_id: int, option_text: str, context: CallbackContext):
     start_time = time.time()
     active_timers.setdefault(user_id, {})[option_text] = (duration, start_time)
 
     await asyncio.sleep(duration)
-    await context.bot.send_message(chat_id=user_id, text=f"Таймер {option_text} истёк!")
+
+    # Отправляем сообщение по завершению таймера
+    try:
+        await context.bot.send_message(chat_id=user_id, text=f"Таймер {option_text} истёк!")
+    except Exception as e:
+        logger.error(f"Ошибка при отправке сообщения о завершении таймера для {user_id}: {e}")
 
     # Удаляем таймер из активных
     if user_id in active_timers:
         del active_timers[user_id][option_text]
         if not active_timers[user_id]:
             del active_timers[user_id]
+
 
 # Функция для загрузки активных таймеров из базы данных
 def load_timers():
@@ -140,13 +147,17 @@ async def button(update: Update, context: CallbackContext):
     if chat_id not in active_timers:
         active_timers[chat_id] = {}
     active_timers[chat_id][text] = (duration, time.time())
+
+    # Передаем context в функцию start_timer
     asyncio.create_task(start_timer(duration, chat_id, text, context))
 
     # Сохранение таймера в базе данных
     with sqlite3.connect('bot_users.db') as conn:
         cursor = conn.cursor()
-        cursor.execute('''INSERT OR REPLACE INTO timers (user_id, timer_name, duration, start_time)
-                          VALUES (?, ?, ?, ?)''', (chat_id, text, duration, time.time()))
+        cursor.execute('''
+            INSERT OR REPLACE INTO timers (user_id, timer_name, duration, start_time)
+            VALUES (?, ?, ?, ?)
+        ''', (chat_id, text, duration, time.time()))
         conn.commit()
 
     await query.edit_message_text(text=f"Таймер для {text} запущен! Ссылка на игру: {link}")
