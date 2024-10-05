@@ -23,15 +23,17 @@ active_timers = {}
 
 # Соответствие названий кнопок и таймеров
 TIMER_OPTIONS = {
-    'MOONBIX': ("🔸 MOONBIX - 5 мин", "https://t.me/Binance_Moonbix_bot/start?startApp=ref_657755660&startapp=ref_657755660&utm_medium=web_share_copy", 5 * 60),
-    'Not Pixel': ("👾 Not Pixel - 1 ч", "https://t.me/notpixel/app?startapp=f657755660", 60 * 60),
+    'OKX Racer': ("🏁 OKX Racer - 1 ч", "https://t.me/OKX_official_bot/OKX_Racer?startapp=linkCode_139909341", 60 * 60),
+    'EasyWatch': ("👁 EasyWatch - 12 ч", "https://t.me/ESWatch_bot?start=uAaPExy", 12 * 60 * 60),
+    'MOONBIX': ("🔸 MOONBIX - 2 ч", "https://t.me/Binance_Moonbix_bot/start?startApp=ref_657755660&startapp=ref_657755660&utm_medium=web_share_copy", 2 * 60 * 60),
+    'Not Pixel': ("👾 Not Pixel - 3 ч", "https://t.me/notpixel/app?startapp=f657755660", 3 * 60 * 60),
     'HRUM': ("🥠 HRUM - 12 ч", "https://t.me/hrummebot/game?startapp=ref657755660", 12 * 60 * 60),
     'Bums': ("🤩 Bums - 3 ч", "https://t.me/bums/app?startapp=ref_jV6eAxBB", 3 * 60 * 60),
-    'Horizon Launch': ("🚀 Horizon Launch - 1 ч", "https://t.me/HorizonLaunch_bot/HorizonLaunch?startapp=657755660", 60 * 60),
-    'Volts': ("⚡️ Volts - 1 ч", "https://t.me/VoltStorageBot/volts?startapp=z55lp3b8rud22s1z7935kk", 60 * 60),
+    'Horizon Launch': ("🚀 Horizon Launch - 12 ч", "https://t.me/HorizonLaunch_bot/HorizonLaunch?startapp=657755660", 12 * 60 * 60),
+    'Volts': ("⚡️ Volts - 12 ч", "https://t.me/VoltStorageBot/volts?startapp=z55lp3b8rud22s1z7935kk", 12 * 60 * 60),
     'Blum': ("♠️ Blum - 8 ч", "http://t.me/BlumCryptoBot/app?startapp=ref_7L2ahDVgyG", 8 * 60 * 60),
     'X Empire': ("📈 X Empire - 3 ч", "https://t.me/empirebot/game?startapp=hero657755660", 3 * 60 * 60),
-    'Hamster Kombat': ("🐹 Hamster Kombat (3 часа)", "https://t.me/hamster_kOmbat_bot/start?startapp=kentId657755660", 3 * 60 * 60),
+    'Hamster Kombat': ("🐹 Hamster Kombat - 3 ч", "https://t.me/hamster_kOmbat_bot/start?startapp=kentId657755660", 3 * 60 * 60),
 }
 
 
@@ -96,15 +98,17 @@ async def text_message_handler(update: Update, context: CallbackContext):
 
 # Отображение списка таймеров для запуска
 async def show_timer_options(update: Update, context: CallbackContext):
-    keyboard = [[InlineKeyboardButton("🔸 MOONBIX (5 мин)", callback_data='MOONBIX')],
-                [InlineKeyboardButton("👾 Not Pixel (1 час)", callback_data='Not Pixel')],
+    keyboard = [[InlineKeyboardButton("🔸 MOONBIX (2 часа)", callback_data='MOONBIX')],
+                [InlineKeyboardButton("🏁 OKX Racer (1 час)", callback_data='OKX Racer')],
+                [InlineKeyboardButton("👾 Not Pixel (3 часa)", callback_data='Not Pixel')],
                 [InlineKeyboardButton("🥠 HRUM (12 часов)", callback_data='HRUM')],
                 [InlineKeyboardButton("🤩 Bums (3 часа)", callback_data='Bums')],
-                [InlineKeyboardButton("🚀 Horizon Launch (1 час)", callback_data='Horizon Launch')],
-                [InlineKeyboardButton("⚡️ Volts (1 час)", callback_data='Volts')],
+                [InlineKeyboardButton("🚀 Horizon Launch (12 часов)", callback_data='Horizon Launch')],
+                [InlineKeyboardButton("⚡️ Volts (12 час)", callback_data='Volts')],
                 [InlineKeyboardButton("♠️ Blum (8 часов)", callback_data='Blum')],
                 [InlineKeyboardButton("📈 X Empire (3 часа)", callback_data='X Empire')],
                 [InlineKeyboardButton("🐹 Hamster Kombat (3 часа)", callback_data='Hamster Kombat')],
+                [InlineKeyboardButton("👁 EasyWatch (12 час)", callback_data='EasyWatch')],
                ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text('Выберите таймер:', reply_markup=reply_markup)
